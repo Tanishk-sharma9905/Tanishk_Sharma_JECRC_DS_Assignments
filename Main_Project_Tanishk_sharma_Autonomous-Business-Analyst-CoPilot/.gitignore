@@ -1,0 +1,69 @@
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# =========================
+# Virtual Environments
+# =========================
+.celebalmainprojectvenv/
+venv/
+.venv/
+
+# =========================
+# Python Cache
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Chroma Vector Database
+# =========================
+storage/chroma_db/
+storage/chroma_db_v2/
+
+# Keep empty storage folder
+storage/*
+!storage/.gitkeep
+
+# =========================
+# Workspace
+# =========================
+workspace/*
+!workspace/.gitkeep
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Operating System Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Python Build Files
+# =========================
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
