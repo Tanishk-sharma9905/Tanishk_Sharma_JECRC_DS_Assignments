@@ -115,26 +115,14 @@ class RestrictedSocket(socket.socket):
         raise PermissionError("Network connections are disabled in the sandbox.")
 socket.socket = RestrictedSocket
 
-# Outbound HTTP / web requests are blocked at the socket layer.
-try:
-    import ctypes
-    def restricted_native_load(*a, **kw):
-        raise PermissionError("Loading native libraries via ctypes is disabled in the sandbox.")
-    ctypes.CDLL = restricted_native_load
-    ctypes.PyDLL = restricted_native_load
-    if hasattr(ctypes, "WinDLL"):
-        ctypes.WinDLL = restricted_native_load
-    if hasattr(ctypes, "OleDLL"):
-        ctypes.OleDLL = restricted_native_load
-    ctypes.cdll.LoadLibrary = restricted_native_load
-except Exception:
-    pass
-
-# Restrict file access
+# --- Path allow-list setup (needed by both the ctypes guard below and the
+# file-access restrictions further down) ---
 allowed_write_prefixes = [os.path.abspath(p) for p in {allowed_write_repr}]
 allowed_read_prefixes = allowed_write_prefixes + [os.path.abspath(p) for p in sys.path if p] + [os.path.abspath(sys.prefix)]
-
-original_open = builtins.open
+if hasattr(sys, "base_prefix"):
+    allowed_read_prefixes.append(os.path.abspath(sys.base_prefix))
+if hasattr(sys, "exec_prefix"):
+    allowed_read_prefixes.append(os.path.abspath(sys.exec_prefix))
 
 def is_subpath(child, parent):
     child = os.path.abspath(child)
@@ -145,6 +133,57 @@ def check_write_path(path):
     abs_path = os.path.abspath(str(path))
     if not any(is_subpath(abs_path, p) for p in allowed_write_prefixes):
         raise PermissionError(f"Modifying path '{{path}}' is disabled in the sandbox.")
+
+# Outbound HTTP / web requests are blocked at the socket layer.
+# Native library loading via ctypes is restricted to an allow-list rather
+# than blocked outright: legitimate installed packages (numpy, scipy,
+# scikit-learn, etc.) load their own bundled runtime DLLs/shared objects
+# on import (e.g. vcomp140.dll on Windows), and blocking that unconditionally
+# breaks those imports entirely. Loads are only permitted when they resolve
+# to a path inside the interpreter's own environment (venv/site-packages/
+# stdlib), or are bare library names resolved via the OS's own system
+# search path (e.g. "kernel32", "libc.so.6"). Everything else is denied.
+try:
+    import ctypes
+
+    def _is_allowed_native_lib(name):
+        if name is None:
+            # ctypes.CDLL(None) / PyDLL(None) exposes symbols already loaded
+            # in the current process; it cannot load new arbitrary code.
+            return True
+        name_str = str(name)
+        has_dir = (os.sep in name_str) or (os.altsep and os.altsep in name_str) or (
+            len(name_str) > 1 and name_str[1] == ":"
+        )
+        if not has_dir:
+            # Bare library name: resolved via the OS's own trusted system
+            # search path, not an arbitrary filesystem path.
+            return True
+        abs_path = os.path.abspath(name_str)
+        return any(is_subpath(abs_path, p) for p in allowed_read_prefixes)
+
+    def _make_guarded_loader(original_loader, label):
+        def guarded(name=None, *a, **kw):
+            if not _is_allowed_native_lib(name):
+                raise PermissionError(
+                    f"Loading native library '{{name}}' from outside the sandboxed "
+                    f"environment is disabled ({{label}})."
+                )
+            return original_loader(name, *a, **kw)
+        return guarded
+
+    ctypes.CDLL = _make_guarded_loader(ctypes.CDLL, "CDLL")
+    ctypes.PyDLL = _make_guarded_loader(ctypes.PyDLL, "PyDLL")
+    if hasattr(ctypes, "WinDLL"):
+        ctypes.WinDLL = _make_guarded_loader(ctypes.WinDLL, "WinDLL")
+    if hasattr(ctypes, "OleDLL"):
+        ctypes.OleDLL = _make_guarded_loader(ctypes.OleDLL, "OleDLL")
+    ctypes.cdll.LoadLibrary = _make_guarded_loader(ctypes.cdll.LoadLibrary, "LoadLibrary")
+except Exception:
+    pass
+
+# Restrict file access
+original_open = builtins.open
 
 def restricted_open(file, mode='r', *args, **kwargs):
     try:
@@ -271,6 +310,17 @@ matplotlib.use('Agg')
         
         # Task 8: Strengthen Sandbox
         try:
+            # joblib/loky (used internally by scikit-learn) tries to shell
+            # out to OS tools (e.g. `wmic` on Windows) to count physical
+            # CPU cores. Subprocess spawning is disabled in the sandbox, so
+            # that probe always fails; joblib catches it and falls back to
+            # the logical core count, but it emits a noisy warning (with an
+            # embedded traceback) every time. Pre-setting LOKY_MAX_CPU_COUNT
+            # tells loky the core count up front so it never attempts the
+            # subprocess call at all, eliminating the warning at the source.
+            child_env = os.environ.copy()
+            child_env.setdefault("LOKY_MAX_CPU_COUNT", str(os.cpu_count() or 1))
+
             process = subprocess.Popen(
                 [sys.executable, "script.py"],
                 cwd=self.temp_dir,
@@ -278,7 +328,8 @@ matplotlib.use('Agg')
                 stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                env=child_env
             )
             stdout, stderr = process.communicate(timeout=timeout)
             
@@ -334,3 +385,4 @@ matplotlib.use('Agg')
                     self.logger.warning(f"Failed to move generated file {filename}: {e}")
                 
         return result
+

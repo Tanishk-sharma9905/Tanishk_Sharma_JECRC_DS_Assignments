@@ -123,6 +123,9 @@ with st.sidebar.expander("Don't have a Gemini API Key?"):
     """)
     st.markdown('<a href="https://aistudio.google.com/apikey" target="_blank"><button style="border-radius:4px;background-color:#1E90FF;color:white;padding:8px 16px;border:none;cursor:pointer;">Generate Free Gemini API Key</button></a>', unsafe_allow_html=True)
 
+# Helper to check API key (Strictly rely on the key entered by the user)
+api_key = st.session_state.get("gemini_api_key", "").strip()
+
 # Debugging Mode
 st.sidebar.markdown("---")
 enable_debug = st.sidebar.checkbox("Enable Debugging Mode", value=False)
@@ -147,8 +150,6 @@ if enable_debug:
     st.sidebar.write(f"**API Source**: `{api_source}`")
     st.sidebar.write(f"**API Key (Masked)**: `{masked_key}`")
 
-# Helper to check API key (Strictly rely on the key entered by the user)
-api_key = st.session_state.get("gemini_api_key", "").strip()
 
 # Initialize session state for report content
 current_project_key = f"{user_id}/{project_name}"

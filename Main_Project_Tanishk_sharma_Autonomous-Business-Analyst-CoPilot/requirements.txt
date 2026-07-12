@@ -21,7 +21,13 @@ seaborn==0.13.2
 # -------------------------
 # Google Gemini
 # -------------------------
-google-generativeai==0.8.5
+# NOTE: google-generativeai is intentionally NOT pinned here.
+# It is not imported directly anywhere in this codebase (only
+# langchain_google_genai.ChatGoogleGenerativeAI is used), and its
+# 0.8.5 release hard-pins google-ai-generativelanguage==0.6.15, which
+# conflicts with langchain-google-genai's requirement of
+# google-ai-generativelanguage>=0.6.18,<0.7.0. Removing the pin lets
+# pip resolve a single compatible google-ai-generativelanguage version.
 langchain==0.3.27
 langchain-core==0.3.75
 langchain-community==0.3.29

@@ -6,7 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from scripts.sandbox import Sandbox
 from src.rag import RAGPipeline
-from src.prompts import MASTER_SYSTEM_PROMPT, ERROR_CORRECTION_PROMPT, VALIDATION_PROMPT
+from src.prompts import MASTER_SYSTEM_PROMPT, ERROR_CORRECTION_PROMPT, VALIDATION_CORRECTION_PROMPT, VALIDATION_PROMPT
 
 AVAILABLE_MODELS = {
     "Gemini 3.1 Flash-Lite (Default)": "gemini-3.1-flash-lite",
@@ -17,10 +17,18 @@ DEFAULT_MODEL = "gemini-3.1-flash-lite"
 
 _rag_singleton = None
 
+VALIDATION_FAILURE_PREFIX = "Validation Failed:"
+
 def is_infrastructure_error(stderr: str) -> bool:
     if not stderr:
         return False
     err_lower = stderr.lower()
+
+    # Validation-only failures (code ran fine but didn't match the request)
+    # are not infrastructure errors - they're handled by a dedicated
+    # correction path, not the RAG/execution-error path.
+    if stderr.strip().startswith(VALIDATION_FAILURE_PREFIX):
+        return False
     
     # Sandbox errors, PermissionError, Security Shield errors
     if "permissionerror" in err_lower:
@@ -256,6 +264,7 @@ class DataScienceAgent:
         
         while retries <= self.max_retries and not success:
             execution_result = sandbox.execute_code(current_code)
+            is_validation_failure = False
             
             if execution_result["success"]:
                 val_prompt = PromptTemplate(
@@ -278,8 +287,9 @@ class DataScienceAgent:
                         success = True
                         break
                     else:
-                        execution_result["stderr"] = f"Validation Failed: {val_json.get('reason')}"
+                        execution_result["stderr"] = f"{VALIDATION_FAILURE_PREFIX} {val_json.get('reason')}"
                         execution_result["success"] = False
+                        is_validation_failure = True
                 except json.JSONDecodeError:
                     # Fallback if LLM fails JSON format
                     if "SUCCESS" in validation_raw.upper():
@@ -295,20 +305,37 @@ class DataScienceAgent:
             error_message = execution_result["stderr"]
             if is_infrastructure_error(error_message):
                 break
-                
-            retrieved_docs = self.rag.retrieve(error_message)
-            
-            correction_prompt = PromptTemplate(
-                template=ERROR_CORRECTION_PROMPT,
-                input_variables=["error_message", "retrieved_docs", "current_code"]
-            )
-            
-            correction_chain = correction_prompt | self.llm
-            correction_response = self._get_text(correction_chain.invoke({   # ← change here
-                "error_message": error_message[-1500:],
-                "retrieved_docs": retrieved_docs,
-                "current_code": current_code
-            }).content)
+
+            if is_validation_failure:
+                # The code ran without error but didn't fulfill the request.
+                # This is a semantic/intent mismatch, not a technical bug, so
+                # skip the RAG doc lookup (pandas/plotly error docs aren't
+                # relevant here) and use a correction prompt that realigns
+                # the code with the literal user request instead.
+                validation_correction_prompt = PromptTemplate(
+                    template=VALIDATION_CORRECTION_PROMPT,
+                    input_variables=["user_question", "validation_reason", "current_code"]
+                )
+                validation_correction_chain = validation_correction_prompt | self.llm
+                correction_response = self._get_text(validation_correction_chain.invoke({
+                    "user_question": user_question,
+                    "validation_reason": error_message[len(VALIDATION_FAILURE_PREFIX):].strip()[-1500:],
+                    "current_code": current_code
+                }).content)
+            else:
+                retrieved_docs = self.rag.retrieve(error_message)
+
+                correction_prompt = PromptTemplate(
+                    template=ERROR_CORRECTION_PROMPT,
+                    input_variables=["error_message", "retrieved_docs", "current_code"]
+                )
+
+                correction_chain = correction_prompt | self.llm
+                correction_response = self._get_text(correction_chain.invoke({   # ← change here
+                    "error_message": error_message[-1500:],
+                    "retrieved_docs": retrieved_docs,
+                    "current_code": current_code
+                }).content)
             
             new_code = self.extract_code(correction_response)
             if new_code:
@@ -339,3 +366,8 @@ class DataScienceAgent:
             "retries": retries,
             "success": success
         }
+
+
+
+
+
