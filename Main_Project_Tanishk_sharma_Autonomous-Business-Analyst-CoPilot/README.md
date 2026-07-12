@@ -1,56 +1,283 @@
-# Autonomous Data Science Co-Pilot
+# 🚀 Autonomous Business Analyst Co-Pilot
 
-The Autonomous Data Science Co-Pilot is an advanced, AI-powered agentic system that allows business users to perform complete, end-to-end data analysis on raw datasets using natural language. No coding is required.
+An AI-powered Business Intelligence platform that transforms raw datasets into actionable insights using **Natural Language, LLMs, Secure Code Execution, and Retrieval-Augmented Generation (RAG)**.
 
-## Features
-- **Zero-Retraining Architecture**: Dynamically adapts to any new dataset (CSV, Excel, JSON, Parquet, SQLite, TSV, ZIP).
-- **Rich Data Profiling**: Automatically infers memory footprint, identifies missing/duplicate rows, parses variable distributions, and builds summary statistics.
-- **Autonomous Execution**: Generates production-ready Python/Pandas code and runs it in an isolated, security-hardened local sandbox.
-- **Self-Healing Loop via RAG**: When an error occurs, the agent retrieves official Pandas/Plotly documentation from a local ChromaDB instance to fix its own code and retries execution.
-- **Interactive Visualizations**: Generates rich Plotly HTML visualizations, allowing users to zoom, pan, and hover over their insights.
-- **Persistent Conversational Memory**: Supports multi-step operations on the same project (e.g., "Clean the data" -> "Now build a regression model").
-- **KMeans Cohort Segmentation**: Built-in 2D/3D clustering and analysis for segmenting numerical datasets.
-- **Time-Series Forecasting**: Automated 3-month moving average and linear regression forecasting with Plotly trends.
-- **User-Level Isolation**: Separate workspaces per User ID, preventing data leakage in multi-tenant environments.
+Users simply upload a dataset, ask questions in plain English, and the AI automatically generates Python code, executes it securely, creates visualizations, and provides business recommendations.
 
-## Architecture
+---
+## 🎥 Project Demo
+
+Watch the complete end-to-end demonstration of the **Autonomous Business Analyst Co-Pilot** here:
+
+👉 **https://youtu.be/MN5ZRL666sk**
+
+<img width="1444" height="777" alt="e6eebeaa-90cd-41fb-bcd9-53e9df827372" src="https://github.com/user-attachments/assets/f49a212f-ef95-4f1d-8419-ee69f97f0e05" />
+
+
+
+
+# ✨ Key Features
+
+- 🤖 Autonomous AI-powered data analysis
+- 📊 Automatic data profiling & quality assessment
+- 📈 Business KPI and executive insight generation
+- 🔄 Self-healing code generation using RAG
+- 🛡️ Secure Python sandbox execution
+- 📉 Interactive Plotly visualizations
+- 🧠 Dynamic schema detection (no fixed column names)
+- 📄 Executive PDF & Markdown report export
+- 💬 Multi-turn conversational analysis
+- 📂 Supports CSV, Excel, JSON, TSV, Parquet, SQLite & ZIP
+
+---
+
+# 🏗️ System Architecture
+
 ```mermaid
-graph TD;
-    User[User Upload & Query] --> UI[Streamlit Frontend]
-    UI --> Agent[DataScienceAgent]
-    Agent --> LLM[Gemini 3.1 / 3.5 Models]
-    Agent --> Sandbox[Security-Hardened Sandbox]
-    Sandbox -- Fails --> RAG[ChromaDB Documentation RAG]
-    RAG --> LLM
-    Sandbox -- Succeeds --> LLM2[LLM Validation]
-    LLM2 -- SUCCESS --> UI
+flowchart LR
+    A[Upload Dataset] --> B[Streamlit UI]
+    B --> C[Business Analyst Agent]
+    C --> D[Gemini LLM]
+    D --> E[Secure Sandbox]
+    E --> F[Business Insights & Visualizations]
 ```
 
-## Security Hardening
-The execution sandbox implements runtime guardrails at the Python level inside the subprocess environment:
-- **Subprocess Spawning & Reloading**: Disabled subprocess spawning (including multiprocessing and fork) and module reloading to prevent sandbox escape vectors.
-- **Network Connections**: Blocked outbound socket/network connections (including urllib, requests, and ctypes) to prevent unauthorized data exfiltration.
-- **File System Protection**: Restricts file write operations, mutations (such as remove, rename, rmdir, and shutil actions), and low-level descriptor opens strictly to the project's workspace folder, preventing tampering with the host filesystem.
-- **Path Traversal Shield**: All input parameters (user ID, project name) are whitelisted to `[A-Za-z0-9_-]+` and verified using absolute path resolution prefixes.
+---
 
-> [!WARNING]
-> These mechanisms represent runtime guardrails at the Python level. For running untrusted or adversarial inputs (e.g. prompt injection via uploaded file content) in a production environment, OS-level isolation (such as Docker, gVisor, or nsjail) is still required.
+# ⚙️ Analysis Pipeline
 
-## Installation & Setup
-1. Clone this repository and ensure Python 3.10+ is installed.
-2. Install the required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Set up your Gemini API Key by renaming `.env.example` to `.env` and setting your key:
-   ```env
-   GEMINI_API_KEY=your_key_here
-   ```
-   *Note: If `GEMINI_API_KEY` is defined in `.env`, the sidebar input will default to this key automatically.*
+```mermaid
+flowchart TD
+    A[Upload Dataset]
+    A --> B[Schema Extraction]
+    B --> C[Business Understanding]
+    C --> D[Generate Python Code]
+    D --> E[Execute in Sandbox]
+    E --> F[Generate Charts]
+    F --> G[Business Recommendations]
+```
 
-## Running the Application
-Launch the Streamlit app:
+---
+
+# 🔄 Self-Healing Workflow
+
+```mermaid
+flowchart TD
+    A[Generated Code]
+    A --> B{Execution Successful?}
+
+    B -->|Yes| C[Validate Response]
+
+    C --> D{Answered User Query?}
+
+    D -->|Yes| E[Return Results]
+
+    D -->|No| F[Validation Correction]
+
+    B -->|No| G[RAG Documentation]
+
+    G --> H[Regenerate Code]
+
+    F --> H
+
+    H --> A
+```
+
+---
+
+# 📊 Core Capabilities
+
+### Data Profiling
+
+Automatically computes:
+
+- Dataset Health Score
+- Missing Values
+- Duplicate Detection
+- Summary Statistics
+- Correlations
+- Outliers
+- Skewness & Kurtosis
+
+---
+
+### Business Intelligence
+
+Generates:
+
+- Executive Summary
+- Revenue Drivers
+- Profitability Analysis
+- Customer Behavior
+- Operational Risks
+- Strategic Recommendations
+
+---
+
+### Machine Learning
+
+Built-in analytics include:
+
+- Customer Segmentation (KMeans)
+- Time Series Forecasting
+- Trend Analysis
+- Correlation Analysis
+
+---
+
+### Dynamic Dataset Understanding
+
+The AI never assumes column names.
+
+Before generating code it automatically:
+
+- Reads dataset schema
+- Detects data types
+- Maps business concepts using synonym matching
+- Generates dataset-specific Python code
+
+This allows the same agent to analyze completely different datasets without retraining.
+
+---
+
+# 🛡️ Secure Sandbox
+
+All generated Python code executes inside a restricted sandbox featuring:
+
+- Workspace isolation
+- File system protection
+- Network blocking
+- Restricted subprocess execution
+- Path traversal prevention
+- Safe native library loading
+
+---
+
+# 📚 Retrieval-Augmented Generation (RAG)
+
+When execution fails:
+
+1. Error is analyzed
+2. Relevant official documentation is retrieved from ChromaDB
+3. Corrected Python code is generated
+4. Analysis automatically retries
+
+Knowledge base includes:
+
+- Python
+- Pandas
+- NumPy
+- Plotly
+- Scikit-learn
+- StatsModels
+
+---
+
+# 🖥️ Application Modules
+
+| Module | Purpose |
+|---------|---------|
+| 📊 Data Profiling | Dataset quality, KPIs & statistics |
+| ⚠️ Outliers | Anomaly & outlier detection |
+| 📈 Dashboard | Interactive charts & forecasting |
+| 📥 Reports | PDF, Markdown & CSV export |
+
+---
+
+# 💬 Example Queries
+
+- Generate an executive sales dashboard.
+- Analyze regional performance.
+- Forecast sales for the next three months.
+- Perform customer segmentation.
+- Detect anomalies.
+- Explain revenue drivers.
+- Build a regression model.
+- Generate an executive business report.
+
+---
+
+# 🛠️ Technology Stack
+
+| Layer | Technologies |
+|--------|--------------|
+| Frontend | Streamlit |
+| LLM | Gemini 2.5 Flash, Flash Lite, Pro |
+| Framework | LangChain |
+| Data | Pandas, NumPy, SciPy |
+| ML | Scikit-learn, StatsModels |
+| Visualization | Plotly, Matplotlib, Seaborn |
+| RAG | ChromaDB, Sentence Transformers |
+| Reports | FPDF2 |
+
+---
+
+# 📂 Project Structure
+
+```text
+.
+├── app.py
+├── agent.py
+├── business_analyst.py
+├── sandbox.py
+├── rag.py
+├── prompts.py
+├── requirements.txt
+├── workspace/
+├── storage/
+└── README.md
+```
+
+---
+
+# 🚀 Installation
+
 ```bash
+git clone <repository-url>
+
+cd Autonomous-Business-Analyst-CoPilot
+
+pip install -r requirements.txt
+
 streamlit run app.py
 ```
-This will open the web UI in your browser. From there, you can enter/change User IDs, create workspaces, upload data, and perform interactive analysis.
+
+---
+
+# 🔑 API Key
+
+The application uses **user-provided Gemini API keys**.
+
+Simply:
+
+1. Launch the application
+2. Select a Gemini model
+3. Paste your API key in the sidebar
+4. Start analyzing data
+
+No `.env` configuration is required.
+
+---
+
+# ✅ Assignment Deliverables
+
+- ✔ Streamlit Web Application
+- ✔ Autonomous AI Agent
+- ✔ Secure Sandbox
+- ✔ RAG over Official Documentation
+- ✔ Automatic Code Generation
+- ✔ Interactive Visualizations
+- ✔ Business Intelligence Engine
+- ✔ Multi-format Dataset Support
+- ✔ GitHub Documentation
+- ✔ End-to-End AI Workflows
+
+---
+
+# 👨‍💻 Developer
+
+**Tanishk Sharma**
+
+B.Tech CSE (AI & ML)
+
+JECRC University
